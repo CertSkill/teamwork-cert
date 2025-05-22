@@ -4,14 +4,16 @@ import openai
 st.title("Certificazione Team Work")
 st.subheader("Simulazione con un collega virtuale")
 
+# Chiave segreta da Streamlit secrets
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
+# Input dell'utente
 user_input = st.text_input("Il tuo collega non consegna in tempo un lavoro. Cosa gli dici?")
 
 if user_input:
     # Risposta del collega virtuale
     chat_response = openai.chat.completions.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "Sei un collega stressato da una scadenza mancata. Rispondi in modo realistico."},
             {"role": "user", "content": user_input}
@@ -19,7 +21,7 @@ if user_input:
     )
     reply = chat_response.choices[0].message.content
 
-    # Valutazione della risposta dell'utente
+    # Valutazione della risposta dell’utente
     scoring_prompt = f"""Analizza questa frase di un candidato nel contesto di collaborazione in un team:
 '{user_input}'
 Dai un punteggio da 0 a 100 sulla capacità di collaborazione (team work), spiegando brevemente perché.
