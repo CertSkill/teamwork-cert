@@ -10,32 +10,32 @@ user_input = st.text_input("Il tuo collega non consegna in tempo un lavoro. Cosa
 
 if user_input:
     # Risposta del collega virtuale
-    response = openai.ChatCompletion.create(
+    chat_response = openai.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "Sei un collega stressato da una scadenza mancata. Rispondi in modo realistico."},
             {"role": "user", "content": user_input}
         ]
     )
-    reply = response.choices[0].message.content
+    reply = chat_response.choices[0].message.content
 
-    # Valutazione del comportamento dell'utente
+    # Valutazione della risposta dell'utente
     scoring_prompt = f"""Analizza questa frase di un candidato nel contesto di collaborazione in un team:
-    '{user_input}'
-    Dai un punteggio da 0 a 100 sulla capacità di collaborazione (team work), spiegando brevemente perché.
-    Rispondi nel formato:
-    Punteggio: XX
-    Motivazione: ..."""
+'{user_input}'
+Dai un punteggio da 0 a 100 sulla capacità di collaborazione (team work), spiegando brevemente perché.
+Rispondi nel formato:
+Punteggio: XX
+Motivazione: ..."""
 
-    score_response = openai.ChatCompletion.create(
+    scoring_response = openai.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "user", "content": scoring_prompt}
         ]
     )
-    scoring_result = score_response.choices[0].message.content
+    scoring_result = scoring_response.choices[0].message.content
 
-    # Output a video
+    # Output
     st.markdown("**Risposta del collega:**")
     st.write(reply)
 
