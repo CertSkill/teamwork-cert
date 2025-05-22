@@ -69,7 +69,7 @@ Motivazione: ..."""}
             st.session_state.risposte.append(risposta)
             st.session_state.punteggi.append(output)
             st.session_state.indice += 1
-            st.experimental_rerun()
+            st.rerun()
 
 # ✅ Fine del test – calcolo finale
 else:
