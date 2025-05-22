@@ -21,3 +21,4 @@ if user_input:
     reply = response.choices[0].message.content
     st.markdown("**Risposta del collega:**")
     st.write(reply)
+
