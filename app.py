@@ -1,4 +1,3 @@
-
 import streamlit as st
 import openai
 
@@ -6,18 +5,9 @@ st.set_page_config(page_title="Certificazione Team Work", layout="centered")
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 st.title("Certificazione Team Work")
-st.subheader("Valutazione guidata da esperti: 5 domande statiche, 15 adattive")
+st.subheader("30 domande: 10 adattive + 20 personalizzate in base al profilo")
 
-# Domande statiche (fisse)
-domande_statiche = [
-    "Un collega non rispetta una scadenza. Come ti comporti?",
-    "Durante una riunione un collega ti interrompe più volte. Come reagisci?",
-    "Il team ha preso una decisione che non condividi. Cosa fai?",
-    "Ti viene chiesto di coordinare un progetto. Come ti organizzi?",
-    "Ricevi un feedback negativo dal team. Come reagisci?"
-]
-
-# Sessione
+# Inizializza sessione
 if "indice" not in st.session_state:
     st.session_state.indice = 0
     st.session_state.risposte = []
@@ -29,51 +19,55 @@ if "indice" not in st.session_state:
         "Problem solving": [],
         "Empatia": []
     }
+    st.session_state.domande_fase_b = []
 
-# Numero totale (5 statiche + 15 dinamiche)
-totale_domande = 20
+NUM_DOMANDE_A = 10
+NUM_DOMANDE_TOTALI = 30
 
-# Funzione per generare domanda dinamica
-def genera_domanda_dinamica(storia_utente):
-    prompt = f"""Agisci come un team composto da:
-- uno psicologo comportamentale aziendale,
-- un HR manager esperto in selezione,
-- un project manager operativo,
-- un data analyst HR tech,
-- un formatore aziendale,
-- un esperto UX e digital assessment.
-
-In base a questa risposta data dal candidato:
-{storia_utente}
-
-Genera una domanda successiva che permetta di approfondire la valutazione della soft skill teamwork. Sii specifico e contestuale. Scrivi solo la domanda."""
-    risposta = openai.chat.completions.create(
+# Flusso A: genera la prossima domanda in base alla risposta precedente
+def genera_domanda_flusso_a(risposta_precedente):
+    prompt = f"""Come un team composto da uno psicologo del lavoro, un HR senior, un project manager, un data analyst HR, un formatore aziendale e un esperto UX, genera una nuova domanda per valutare meglio il teamwork sulla base di questa risposta:
+\"{risposta_precedente}\"
+Scrivi solo la domanda."""
+    out = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}]
     )
-    return risposta.choices[0].message.content.strip()
+    return out.choices[0].message.content.strip()
 
-# Logica test
-if st.session_state.indice < totale_domande:
-    if st.session_state.indice < 5:
-        domanda = domande_statiche[st.session_state.indice]
+# Flusso B: genera 20 domande personalizzate a partire dal profilo
+def genera_domande_flusso_b(profilo):
+    profilo_descrizione = ", ".join([f"{k}: {round(sum(v)/len(v), 2) if v else 0}" for k, v in profilo.items()])
+    prompt = f"""Sei un team di esperti HR. Genera 20 domande personalizzate per valutare il teamwork di un candidato con questo profilo: {profilo_descrizione}. Scrivi solo 1 domanda per riga."""
+    out = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return [r.strip() for r in out.choices[0].message.content.strip().split("\n") if r.strip()]
+
+# Domande
+if st.session_state.indice < NUM_DOMANDE_TOTALI:
+    if st.session_state.indice == 0:
+        domanda = "Un collega non rispetta una scadenza. Come ti comporti?"
+    elif st.session_state.indice < NUM_DOMANDE_A:
+        domanda = genera_domanda_flusso_a(st.session_state.risposte[-1])
+    elif st.session_state.indice == NUM_DOMANDE_A:
+        st.session_state.domande_fase_b = genera_domande_flusso_b(st.session_state.profilo)
+        domanda = st.session_state.domande_fase_b[0]
     else:
-        # Domande dinamiche in base alla risposta precedente
-        ultima = st.session_state.risposte[-1] if st.session_state.risposte else ""
-        domanda = genera_domanda_dinamica(ultima)
+        domanda = st.session_state.domande_fase_b[st.session_state.indice - NUM_DOMANDE_A]
 
-    st.markdown(f"### Domanda {st.session_state.indice + 1} di {totale_domande}")
+    st.markdown(f"### Domanda {st.session_state.indice + 1} di {NUM_DOMANDE_TOTALI}")
     st.markdown(f"**{domanda}**")
-    risposta = st.text_area("La tua risposta")
+    risposta = st.text_area("La tua risposta", value="", key=f"risposta_{st.session_state.indice}")
 
-    if st.button("Invia risposta"):
+    if st.button("Invia risposta", key=f"btn_{st.session_state.indice}"):
         with st.spinner("Analisi della risposta..."):
             valutazione = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"""Valuta questa risposta in merito alla capacità di lavorare in team:
+                messages=[{
+                    "role": "user",
+                    "content": f"""Valuta questa risposta in merito alla capacità di lavorare in team:
 Risposta: {risposta}
 Assegna un punteggio da 0 a 100 per ciascuna delle seguenti dimensioni:
 1. Collaborazione
@@ -89,12 +83,9 @@ Leadership: XX
 Problem solving: XX
 Empatia: XX
 
-Spiega brevemente ogni punteggio.
-"""
-                    }
-                ]
+Spiega brevemente ogni punteggio."""
+                }]
             )
-
             output = valutazione.choices[0].message.content
             st.session_state.risposte.append(risposta)
             st.session_state.punteggi.append(output)
@@ -109,10 +100,9 @@ Spiega brevemente ogni punteggio.
             st.session_state.indice += 1
             st.rerun()
 
+# Fase finale: profilo + badge
 else:
     st.success("✅ Test completato!")
-    st.markdown("---")
-
     punteggi_finali = {
         k: round(sum(v)/len(v), 2) if v else 0 for k, v in st.session_state.profilo.items()
     }
@@ -144,3 +134,4 @@ else:
     if st.button("🔄 Ricomincia il test"):
         st.session_state.clear()
         st.rerun()
+
