@@ -47,7 +47,9 @@ st.markdown("**Rispondi alle 20 domande per ottenere la tua certificazione perso
 # ⚙️ Logica principale del test
 if st.session_state.indice < tot_domande:
     domanda_corrente = domande[st.session_state.indice]
-    risposta = st.text_area(f"Domanda {st.session_state.indice + 1} di {tot_domande}", domanda_corrente)
+    st.markdown(f"**Domanda {st.session_state.indice + 1} di {tot_domande}:** {domanda_corrente}")
+    risposta = st.text_area("La tua risposta")
+
 
     if st.button("Invia risposta"):
         with st.spinner("Analisi della risposta in corso..."):
