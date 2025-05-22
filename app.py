@@ -93,7 +93,7 @@ else:
         st.image("https://raw.githubusercontent.com/CertSkill/teamwork-cert/main/badge.png", width=300)
     else:
         st.info("🧠 Continua ad allenarti per ottenere la certificazione.")
-
-   if st.button("🔄 Ricomincia il test"):
-    st.session_state.clear()
-    st.rerun()
+    st.markdown("---")
+       if st.button("🔄 Ricomincia il test"):
+            st.session_state.clear()
+            st.rerun()
