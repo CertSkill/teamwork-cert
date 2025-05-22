@@ -43,3 +43,16 @@ Motivazione: ..."""
 
     st.markdown("**Valutazione della tua risposta:**")
     st.write(scoring_result)
+    # Badge finale (se supera soglia)
+try:
+    score_line = scoring_result.split("\n")[0]
+    score = int("".join(filter(str.isdigit, score_line)))
+
+    if score >= 70:
+        st.success("🎖 Hai ottenuto la certificazione Team Work!")
+        st.image("https://raw.githubusercontent.com/CertSkill/teamwork-cert/main/badge.png", width=300)
+    else:
+        st.info("🧠 Continua ad allenarti per ottenere la certificazione.")
+except:
+    st.warning("⚠️ Impossibile determinare il punteggio in automatico.")
+
