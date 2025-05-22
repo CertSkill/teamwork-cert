@@ -4,12 +4,13 @@ import openai
 st.title("Certificazione Team Work")
 st.subheader("Simulazione con un collega virtuale")
 
+# Inserisci la tua API key nei secrets su Streamlit Cloud
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Input dell'utente
 user_input = st.text_input("Il tuo collega non consegna in tempo un lavoro. Cosa gli dici?")
 
-# Invio a GPT
+# Invio a GPT e risposta
 if user_input:
     response = openai.ChatCompletion.create(
         model="gpt-4",
@@ -21,4 +22,3 @@ if user_input:
     reply = response.choices[0].message.content
     st.markdown("**Risposta del collega:**")
     st.write(reply)
-
