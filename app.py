@@ -94,11 +94,6 @@ else:
     else:
         st.info("🧠 Continua ad allenarti per ottenere la certificazione.")
 
-    st.markdown("---")
-    if st.button("🔄 Ricomincia il test"):
-        st.session_state.indice = 0
-        st.session_state.risposte = []
-        st.session_state.punteggi = []
-        st.experimental_rerun()
-
-
+   if st.button("🔄 Ricomincia il test"):
+    st.session_state.clear()
+    st.rerun()
