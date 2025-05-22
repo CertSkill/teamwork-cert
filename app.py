@@ -1,12 +1,17 @@
 import streamlit as st
 import openai
 
-# Inizializzazione di tutte le variabili di sessione
+st.set_page_config(page_title="Certificazione Team Work", layout="centered")
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+st.title("Certificazione Team Work")
+st.subheader("30 domande: 10 adattive + 20 personalizzate in base al profilo")
+
+# Inizializza sessione
 if "indice" not in st.session_state:
     st.session_state.indice = 0
     st.session_state.risposte = []
     st.session_state.punteggi = []
-    st.session_state.stili_comportamentali = []
     st.session_state.profilo = {
         "Collaborazione": [],
         "Comunicazione": [],
@@ -19,44 +24,18 @@ if "indice" not in st.session_state:
 NUM_DOMANDE_A = 10
 NUM_DOMANDE_TOTALI = 30
 
-# Classifica comportamento dopo la risposta
-def classifica_comportamento(risposta):
-    prompt = f"""Analizza questa risposta nel contesto di una dinamica di lavoro in team:
-\"{risposta}\"
-Classifica lo stile comportamentale emerso scegliendo uno tra:
-- Cooperativo
-- Assertivo
-- Passivo
-- Conflittuale
-- Diplomatico
-- Opportunista
-- Evasivo
-
-Scrivi solo:
-Stile: [etichetta]
-Motivo: [breve motivazione]
-"""
-    result = openai.chat.completions.create(
+# Flusso A: genera la prossima domanda in base alla risposta precedente
+def genera_domanda_flusso_a(risposta_precedente):
+    prompt = f"""Come un team composto da uno psicologo del lavoro, un HR senior, un project manager, un data analyst HR, un formatore aziendale e un esperto UX, genera una nuova domanda per valutare meglio il teamwork sulla base di questa risposta:
+\"{risposta_precedente}\"
+Scrivi solo la domanda."""
+    out = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}]
     )
-    return result.choices[0].message.content.strip()
+    return out.choices[0].message.content.strip()
 
-# Genera domanda adattiva in base al comportamento + profilo
-def genera_domanda_comportamentale(profilo, stile_corrente):
-    profilo_descrizione = ", ".join([f"{k}: {round(sum(v)/len(v), 2) if v else 0}" for k, v in profilo.items()])
-    prompt = f"""In base al seguente profilo:
-{profilo_descrizione}
-e lo stile comportamentale più recente: {stile_corrente}
-
-Genera una nuova domanda che metta alla prova questo stile e stimoli una risposta più netta. Inserisci un conflitto, una responsabilità o una decisione etica. Scrivi solo la domanda."""
-    result = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return result.choices[0].message.content.strip()
-
-# Genera 20 domande personalizzate dopo la fase A
+# Flusso B: genera 20 domande personalizzate a partire dal profilo
 def genera_domande_flusso_b(profilo):
     profilo_descrizione = ", ".join([f"{k}: {round(sum(v)/len(v), 2) if v else 0}" for k, v in profilo.items()])
     prompt = f"""Sei un team di esperti HR. Genera 20 domande personalizzate per valutare il teamwork di un candidato con questo profilo: {profilo_descrizione}. Scrivi solo 1 domanda per riga."""
@@ -66,18 +45,15 @@ def genera_domande_flusso_b(profilo):
     )
     return [r.strip() for r in out.choices[0].message.content.strip().split("\n") if r.strip()]
 
-# Inizio del test
+# Domande
 if st.session_state.indice < NUM_DOMANDE_TOTALI:
-    # Domande fase A (1–10)
     if st.session_state.indice == 0:
         domanda = "Un collega non rispetta una scadenza. Come ti comporti?"
     elif st.session_state.indice < NUM_DOMANDE_A:
-        domanda = genera_domanda_comportamentale(st.session_state.profilo, "cooperativo")
-    # Passaggio a fase B (profilo completo)
+        domanda = genera_domanda_flusso_a(st.session_state.risposte[-1])
     elif st.session_state.indice == NUM_DOMANDE_A:
         st.session_state.domande_fase_b = genera_domande_flusso_b(st.session_state.profilo)
         domanda = st.session_state.domande_fase_b[0]
-    # Domande fase B (11–30)
     else:
         domanda = st.session_state.domande_fase_b[st.session_state.indice - NUM_DOMANDE_A]
 
@@ -87,7 +63,6 @@ if st.session_state.indice < NUM_DOMANDE_TOTALI:
 
     if st.button("Invia risposta", key=f"btn_{st.session_state.indice}"):
         with st.spinner("Analisi della risposta..."):
-            # Valutazione punteggi
             valutazione = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{
@@ -115,7 +90,6 @@ Spiega brevemente ogni punteggio."""
             st.session_state.risposte.append(risposta)
             st.session_state.punteggi.append(output)
 
-            # Parsing punteggi
             for riga in output.splitlines():
                 for chiave in st.session_state.profilo:
                     if riga.startswith(chiave):
@@ -123,22 +97,10 @@ Spiega brevemente ogni punteggio."""
                         if numero:
                             st.session_state.profilo[chiave].append(int(numero))
 
-            # Analisi comportamento
-            comportamento_output = classifica_comportamento(risposta)
-            st.session_state.stili_comportamentali.append(comportamento_output)
-
-            # Estrai stile puro
-            for line in comportamento_output.splitlines():
-                if line.startswith("Stile:"):
-                    stile_corrente = line.replace("Stile:", "").strip()
-                    break
-            else:
-                stile_corrente = "non rilevato"
-
             st.session_state.indice += 1
             st.rerun()
 
-# Risultato finale
+# Fase finale: profilo + badge
 else:
     st.success("✅ Test completato!")
     punteggi_finali = {
@@ -149,10 +111,6 @@ else:
     st.markdown("### 📊 Profilo del candidato")
     for k, v in punteggi_finali.items():
         st.markdown(f"**{k}:** {v}/100")
-
-    st.markdown("### 🧠 Comportamenti osservati")
-    for i, stile in enumerate(st.session_state.stili_comportamentali, 1):
-        st.markdown(f"**Risposta {i}:** {stile}")
 
     punti_forti = [k for k, v in punteggi_finali.items() if v >= 80]
     punti_deboli = [k for k, v in punteggi_finali.items() if v < 60]
