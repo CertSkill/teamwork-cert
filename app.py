@@ -1,13 +1,7 @@
 import streamlit as st
 import openai
 
-st.set_page_config(page_title="Certificazione Team Work", layout="centered")
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-st.title("Certificazione Team Work")
-st.subheader("30 domande: test comportamentale interattivo")
-
-# Session state iniziale
+# Inizializzazione di tutte le variabili di sessione
 if "indice" not in st.session_state:
     st.session_state.indice = 0
     st.session_state.risposte = []
